@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Molecular Docking Tutorial (AutoDock Vina Example)</title>
+  <meta name="description" content="Step-by-step molecular docking tutorial: install tools, prepare receptor/ligand, define search space, run Vina, and visualize results." />
+  <style>
+    :root { --bg:#0f1216; --fg:#e8e9ed; --muted:#9aa4b2; --acc:#7cc4ff; --card:#171b22; --border:#263041; --code:#0b1017; --green:#b7f0b1; }
+    * { box-sizing:border-box; }
+    body { margin:0; font:16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", sans-serif; color:var(--fg); background:var(--bg); }
+    a { color:var(--acc); text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .wrap { display:grid; grid-template-columns: 280px 1fr; min-height:100vh; }
+    nav { padding:22px 18px; border-right:1px solid var(--border); position:sticky; top:0; height:100vh; overflow:auto; background:#0c0f13; }
+    nav h1 { font-size:18px; margin:0 0 8px 0; }
+    nav p { margin:0 0 16px 0; color:var(--muted); }
+    nav ul { list-style:none; margin:0; padding:0; }
+    nav li { margin:8px 0; }
+    main { padding:28px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin:18px 0; }
+    .step { counter-increment: step; }
+    .step > h2::before { content: counter(step) ". "; color:var(--green); }
+    h2 { margin:0 0 12px 0; font-size:22px; }
+    .muted { color:var(--muted); }
+    pre { background:var(--code); border:1px solid var(--border); border-radius:10px; padding:12px; overflow:auto; position:relative; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: 13.5px; }
+    .copy { position:absolute; top:8px; right:8px; border:1px solid var(--border); background:#0f141c; color:var(--fg); border-radius:8px; padding:6px 10px; cursor:pointer; }
+    .tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .tab { border:1px solid var(--border); background:#0f141c; color:var(--fg); padding:6px 10px; border-radius:8px; cursor:pointer; }
+    .tab[aria-selected="true"] { outline:2px solid var(--acc); }
+    .note { border-left:3px solid var(--acc); padding:10px 12px; background:#111722; margin-top:10px; color:var(--muted); }
+    .grid { display:grid; grid-template-columns: 1fr; gap:16px; }
+    @media (min-width: 980px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+    figure { margin:0; }
+    figcaption { font-size:13px; color:var(--muted); margin-top:6px; }
+    footer { color:var(--muted); font-size:14px; margin-top:24px; }
+    kbd { background:#121823; border:1px solid var(--border); border-bottom-width:2px; border-radius:6px; padding:2px 6px; font-size:12px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <nav aria-label="Section navigation">
+    <h1>Docking Tutorial</h1>
+    <p class="muted">AutoDock Vina workflow</p>
+    <ul>
+      <li><a href="#intro">Introduction</a></li>
+      <li><a href="#prereqs">Prerequisites</a></li>
+      <li><a href="#data">1. Get Data</a></li>
+      <li><a href="#prep">2. Prepare Structures</a></li>
+      <li><a href="#box">3. Define Search Space</a></li>
+      <li><a href="#dock">4. Run Docking</a></li>
+      <li><a href="#analyze">5. Analyze Poses</a></li>
+      <li><a href="#troubleshoot">Troubleshooting</a></li>
+      <li><a href="#refs">References</a></li>
+    </ul>
+  </nav>
+
+  <main id="content" tabindex="-1">
+    <section id="intro" class="card">
+      <h2>Introduction</h2>
+      <p>
+        This tutorial walks through a reproducible molecular docking workflow using <strong>AutoDock Vina</strong>
+        as the docking engine and <strong>PyMOL/ChimeraX</strong> for visualization. You’ll prepare a protein receptor,
+        prepare a ligand, define a search box, run docking, and interpret results.
+      </p>
+      <div class="note">Use this guide for educational and computational purposes only. </div>
+    </section>
+
+    <section id="prereqs" class="card step">
+      <h2>Prerequisites</h2>
+      <div class="tabs" role="tablist" aria-label="Install tabs">
+        <button class="tab" role="tab" aria-selected="true" aria-controls="pane-linux" id="tab-linux">Linux</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="pane-mac" id="tab-mac">macOS</button>
+        <button class="tab" role="tab" aria-selected="false" aria-controls="pane-win" id="tab-win">Windows</button>
+      </div>
+
+      <div id="pane-linux" role="tabpanel" aria-labelledby="tab-linux">
+        <pre><button class="copy" aria-label="Copy">Copy</button><code># Vina (prebuilt or package)
+# Example with conda (recommended):
+conda create -n docking -y python=3.11
+conda activate docking
+conda install -y -c conda-forge -c bioconda autodock-vina openbabel pymol-open-source
+
+# Optional: ChimeraX (download from UCSF site)
+</code></pre>
+      </div>
+
+      <div id="pane-mac" role="tabpanel" aria-labelledby="tab-mac" hidden>
+        <pre><button class="copy" aria-label="Copy">Copy</button><code># Homebrew + conda recommended
+brew install --cask miniforge
+conda create -n docking -y python=3.11
+conda activate docking
+conda install -y -c conda-forge -c bioconda autodock-vina openbabel pymol-open-source
+</code></pre>
+      </div>
+
+      <div id="pane-win" role="tabpanel" aria-labelledby="tab-win" hidden>
+        <pre><button class="copy" aria-label="Copy">Copy</button><code>:: Use Miniforge prompt
+conda create -n docking -y python=3.11
+conda activate docking
+conda install -y -c conda-forge -c bioconda autodock-vina openbabel pymol-open-source
+</code></pre>
+      </div>
+
+      <p class="muted">You’ll also need a text editor and ~1–2 GB free disk space.</p>
+    </section>
+
+    <section id="data" class="card step">
+      <h2>Get Data</h2>
+      <ol>
+        <li>Choose a protein target (e.g., PDB ID <code>XXXX</code>) and download the PDB file.</li>
+        <li>Choose a ligand (SMILES or SDF). You can fetch SMILES from public databases.</li>
+      </ol>
+      <div class="note">TODO: Replace <em>XXXX</em> with a real PDB ID and add direct links to sample files. Provide a ZIP with prepared files for quick start.</div>
+    </section>
+
+    <section id="prep" class="card step">
+      <h2>Prepare Structures</h2>
+      <div class="grid">
+        <div>
+          <h3>Receptor (protein)</h3>
+          <ol>
+            <li>Remove waters/ions unless essential; keep cofactors if required.</li>
+            <li>Add hydrogens; assign charges.</li>
+            <li>Export as <code>.pdbqt</code>.</li>
+          </ol>
+          <pre><button class="copy" aria-label="Copy">Copy</button><code># Example with Open Babel (simple): 
+obabel protein.pdb -O receptor.pdb --addh
+# Use AutoDockTools/MGLTools or prepare_receptor scripts to make PDBQT:
+# prepare_receptor -r receptor.pdb -o receptor.pdbqt
+</code></pre>
+        </div>
+        <div>
+          <h3>Ligand</h3>
+          <ol>
+            <li>Convert SMILES/SDF to 3D, add hydrogens, set protonation (pH ~7.4).</li>
+            <li>Generate conformers; choose a reasonable starting pose.</li>
+            <li>Export as <code>.pdbqt</code>.</li>
+          </ol>
+          <pre><button class="copy" aria-label="Copy">Copy</button><code># Convert and prepare (example)
+obabel ligand.smi -O ligand_initial.sdf --gen3d --addh
+# prepare_ligand -l ligand_initial.sdf -o ligand.pdbqt
+</code></pre>
+        </div>
+      </div>
+      <div class="note">For accurate charge/protonation, consider specialized tools or workflows. Document exactly what you use for reproducibility.</div>
+    </section>
+
+    <section id="box" class="card step">
+      <h2>Define Search Space</h2>
+      <p>Identify the binding site and set the Vina grid box center and size.</p>
+      <pre><button class="copy" aria-label="Copy">Copy</button><code># Example config.txt (edit numbers)
+receptor = receptor.pdbqt
+ligand = ligand.pdbqt
+
+center_x = 10.5
+center_y = 24.1
+center_z = -3.7
+
+size_x = 20
+size_y = 20
+size_z = 20
+
+exhaustiveness = 16
+num_modes = 10
+energy_range = 3
+</code></pre>
+      <div class="note">Use PyMOL/ChimeraX to hover the binding pocket and read coordinates; or align to a co-crystal ligand and use its centroid.</div>
+    </section>
+
+    <section id="dock" class="card step">
+      <h2>Run Docking</h2>
+      <pre><button class="copy" aria-label="Copy">Copy</button><code># Run Vina
+vina --config config.txt --out out_poses.pdbqt --log vina.log
+
+# Quick one-liner (explicit args):
+vina --receptor receptor.pdbqt --ligand ligand.pdbqt \
+     --center_x 10.5 --center_y 24.1 --center_z -3.7 \
+     --size_x 20 --size_y 20 --size_z 20 \
+     --exhaustiveness 16 --num_modes 10 --out out_poses.pdbqt --log vina.log
+</code></pre>
+      <p class="muted">Tip: Increase <code>exhaustiveness</code> for harder pockets; keep sizes just large enough to cover the site.</p>
+    </section>
+
+    <section id="analyze" class="card step">
+      <h2>Analyze Poses</h2>
+      <div class="grid">
+        <div>
+          <h3>Scores & selection</h3>
+          <pre><button class="copy" aria-label="Copy">Copy</button><code># Extract top score from log (example)
+grep "REMARK VINA RESULT" vina.log
+# Convert PDBQT to SDF for viewers if needed:
+obabel out_poses.pdbqt -O out_poses.sdf
+</code></pre>
+        </div>
+        <div>
+          <h3>Visualization</h3>
+          <pre><button class="copy" aria-label="Copy">Copy</button><code># PyMOL example commands
+pymol -cq <<'PY'
+load receptor.pdbqt, receptor
+load out_poses.pdbqt, poses
+sele site, byres (receptor within 5 of poses)
+show sticks, site or poses
+color cyan, poses
+save view.png
+quit
+PY
+</code></pre>
+        </div>
+      </div>
+      <figure>
+        <img src="assets/placeholder.png" alt="Example docking pose visualization" width="720" height="400" />
+        <figcaption>Replace with a real screenshot of the top pose in the pocket.</figcaption>
+      </figure>
+    </section>
+
+    <section id="troubleshoot" class="card">
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li><strong>No plausible poses?</strong> Re-check protonation/tautomer, box placement, flexibility, or cofactor presence.</li>
+        <li><strong>Clashes or odd geometry?</strong> Verify ligand 3D generation and partial charges; try different starting conformers.</li>
+        <li><strong>Scores look too good?</strong> Box might be too small or constrained; verify units and receptor preparation.</li>
+        <li><strong>Reproducibility:</strong> Record software versions and config, and seed if using a stochastic mode.</li>
+      </ul>
+    </section>
+
+    <section id="refs" class="card">
+      <h2>References & Further Reading</h2>
+      <ul>
+        <li>AutoDock Vina documentation</li>
+        <li>PyMOL / ChimeraX user guides</li>
+        <li>Open Babel user guide</li>
+      </ul>
+      <footer>© Tushar Gaikwad — Licensed under CC BY 4.0. </footer>
+    </section>
+  </main>
+</div>
+
+<script>
+  // Tabs
+  const tabs = document.querySelectorAll('.tab');
+  const panes = {
+    'tab-linux': document.getElementById('pane-linux'),
+    'tab-mac': document.getElementById('pane-mac'),
+    'tab-win': document.getElementById('pane-win'),
+  };
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.setAttribute('aria-selected', 'false'));
+    Object.values(panes).forEach(p => p.hidden = true);
+    t.setAttribute('aria-selected', 'true');
+    panes[t.id].hidden = false;
+  }));
+
+  // Copy buttons
+  document.querySelectorAll('pre .copy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const code = btn.parentElement.querySelector('code').innerText;
+      try {
+        await navigator.clipboard.writeText(code);
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = old, 1200);
+      } catch(e) {
+        alert('Copy failed. Select manually.');
+      }
+    });
+  });
+</script>
+</body>
+</html>
+
