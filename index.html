@@ -216,6 +216,75 @@ PY
         <figcaption>Protein, Ligand(red).</figcaption>
       </figure>
     </section>
+        <section id="md" class="card step">
+      <h2>6. Molecular Dynamics (MD) Simulation Workflow</h2>
+      <p>
+        To explore the dynamic stability of the docked complexes, molecular dynamics simulations were performed.
+        The goal was to evaluate the conformational stability and protein–ligand interactions over time.
+      </p>
+
+      <h3>Basic Workflow</h3>
+      <ol>
+        <li>Prepare the docked complex (protein–ligand) as input for <strong>GROMACS</strong>.</li>
+        <li>Generate topology files and solvate the system in a cubic box with water molecules.</li>
+        <li>Neutralize the system by adding counterions (Na⁺/Cl⁻).</li>
+        <li>Energy minimization to relax initial steric clashes.</li>
+        <li>Equilibration (NVT and NPT) phases to stabilize temperature and pressure.</li>
+        <li>Production MD run for 300 ns to sample conformations.</li>
+        <li>Analyze trajectory to extract RMSD, RMSF, Radius of Gyration, and interaction distances.</li>
+      </ol>
+
+      <pre><button class="copy" aria-label="Copy">Copy</button><code># Example MD setup using GROMACS
+gmx pdb2gmx -f docked_complex.pdb -o processed.gro -water tip3p
+gmx editconf -f processed.gro -o newbox.gro -c -d 1.0 -bt cubic
+gmx solvate -cp newbox.gro -cs spc216.gro -o solv.gro -p topol.top
+gmx grompp -f ions.mdp -c solv.gro -p topol.top -o ions.tpr
+gmx genion -s ions.tpr -o solv_ions.gro -p topol.top -pname NA -nname CL -neutral
+gmx grompp -f minim.mdp -c solv_ions.gro -p topol.top -o em.tpr
+gmx mdrun -v -deffnm em
+# Equilibration and Production runs...
+gmx grompp -f nvt.mdp -c em.gro -p topol.top -o nvt.tpr
+gmx mdrun -deffnm nvt
+gmx grompp -f npt.mdp -c nvt.gro -p topol.top -o npt.tpr
+gmx mdrun -deffnm npt
+gmx grompp -f md.mdp -c npt.gro -p topol.top -o md.tpr
+gmx mdrun -deffnm md -v
+</code></pre>
+
+      <div class="note">
+        For reproducibility, document GROMACS version and force field (e.g., CHARMM36, AMBER99SB-ILDN).
+      </div>
+    </section>
+
+    <section id="results" class="card step">
+      <h2>7. MD Simulation Results</h2>
+      <p>
+        The trajectory analysis revealed the time-dependent behavior of the dopamine D2 receptor (DRD2)
+        complexed with ligands. Below are representative plots from a 300 ns simulation.
+      </p>
+
+      <figure>
+        <img src="assets/MD.png" alt="MD trajectory analysis: RMSD, RMSF, Rg, and ligand distance" width="800" />
+        <figcaption>
+          A. Ligand RMSD (fit to protein), B. Per-residue RMSF, C. Protein–Ligand Minimum Distance, and D. Radius of Gyration.
+          Dopamine (red) vs. Stigmasterol (yellow).
+        </figcaption>
+      </figure>
+
+      <figure>
+        <img src="assets/DRD2-Dop.png" alt="Free Energy Surface (FES) of DRD2-Dopamine complex" width="800" />
+        <figcaption>
+          Free Energy Surface (FES) representation for DRD2–dopamine complex depicting conformational stability
+          across RMSD and radius of gyration coordinates.
+        </figcaption>
+      </figure>
+
+      <div class="note">
+        <strong>Interpretation:</strong> Dopamine exhibits greater conformational stability (lower RMSD and narrower energy basin)
+        compared to stigmasterol, suggesting stronger receptor binding stability under dynamic conditions.
+      </div>
+    </section>
+
 
     <section id="troubleshoot" class="card">
       <h2>Troubleshooting</h2>
